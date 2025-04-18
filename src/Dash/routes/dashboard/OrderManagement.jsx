@@ -1,246 +1,399 @@
-    import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import React, { useState, useEffect } from "react";
+import { db } from "../../../firebase/firebase";
+import { collection, query, where, getDocs, doc, updateDoc, deleteDoc, addDoc, onSnapshot } from "firebase/firestore";
+import { useNavigate } from "react-router-dom";
+import { Package, DollarSign, Users, CreditCard, TrendingUp, PencilLine, Trash, Plus } from "lucide-react";
 
-    import { useTheme } from "../../hooks/use-theme";
+const OrderManagement = () => {
+  const navigate = useNavigate();
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    totalOrders: 0,
+    pendingOrders: 0,
+    completedOrders: 0,
+    revenue: 0
+  });
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [currentOrder, setCurrentOrder] = useState(null);
+  const [formData, setFormData] = useState({
+    name: "",
+    contact: "",
+    email: "",
+    kilo: "",
+    itemsCount: "",
+    service: "Wash & fold",
+    status: "pending"
+  });
 
-    import { overviewData, recentSalesData, topProducts } from "../../constants/index";
+  // Fetch orders in real-time
+  useEffect(() => {
+    const q = query(collection(db, "orders"));
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const ordersData = [];
+      let total = 0;
+      let pending = 0;
+      let completed = 0;
+      let revenue = 0;
 
-    import { Footer } from "../../layouts/footer";
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        ordersData.push({ id: doc.id, ...data });
+        
+        total++;
+        if (data.status === "pending") pending++;
+        if (data.status === "completed") completed++;
+        
+        // Simple revenue calculation (example: ₱100 per kilo)
+        revenue += (parseInt(data.kilo) || 0) * 100;
+      });
 
-    import { CreditCard, DollarSign, Package, PencilLine, Star, Trash, TrendingUp, Users } from "lucide-react";
+      setOrders(ordersData);
+      setStats({
+        totalOrders: total,
+        pendingOrders: pending,
+        completedOrders: completed,
+        revenue: revenue
+      });
+      setLoading(false);
+    });
 
+    return () => unsubscribe();
+  }, []);
 
-    const OrderManagement = () => {
-        const { theme } = useTheme();
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
 
-        return (
-            <div className="flex flex-col gap-y-4">
-                <h1 className="title">Tarub</h1>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    <div className="card">
-                        <div className="card-header">
-                            <div className="w-fit rounded-lg bg-blue-500/20 p-2 text-blue-500 transition-colors dark:bg-blue-600/20 dark:text-blue-600">
-                                <Package size={26} />
-                            </div>
-                            <p className="card-title">Total Products</p>
-                        </div>
-                        <div className="card-body bg-slate-100 transition-colors dark:bg-slate-950">
-                            <p className="text-3xl font-bold text-slate-900 transition-colors dark:text-slate-50">25,154</p>
-                            <span className="flex w-fit items-center gap-x-2 rounded-full border border-blue-500 px-2 py-1 font-medium text-blue-500 dark:border-blue-600 dark:text-blue-600">
-                                <TrendingUp size={18} />
-                                25%
-                            </span>
-                        </div>
-                    </div>
-                    <div className="card">
-                        <div className="card-header">
-                            <div className="rounded-lg bg-blue-500/20 p-2 text-blue-500 transition-colors dark:bg-blue-600/20 dark:text-blue-600">
-                                <DollarSign size={26} />
-                            </div>
-                            <p className="card-title">Total Paid Orders</p>
-                        </div>
-                        <div className="card-body bg-slate-100 transition-colors dark:bg-slate-950">
-                            <p className="text-3xl font-bold text-slate-900 transition-colors dark:text-slate-50">$16,000</p>
-                            <span className="flex w-fit items-center gap-x-2 rounded-full border border-blue-500 px-2 py-1 font-medium text-blue-500 dark:border-blue-600 dark:text-blue-600">
-                                <TrendingUp size={18} />
-                                12%
-                            </span>
-                        </div>
-                    </div>
-                    <div className="card">
-                        <div className="card-header">
-                            <div className="rounded-lg bg-blue-500/20 p-2 text-blue-500 transition-colors dark:bg-blue-600/20 dark:text-blue-600">
-                                <Users size={26} />
-                            </div>
-                            <p className="card-title">Total Customers</p>
-                        </div>
-                        <div className="card-body bg-slate-100 transition-colors dark:bg-slate-950">
-                            <p className="text-3xl font-bold text-slate-900 transition-colors dark:text-slate-50">15,400k</p>
-                            <span className="flex w-fit items-center gap-x-2 rounded-full border border-blue-500 px-2 py-1 font-medium text-blue-500 dark:border-blue-600 dark:text-blue-600">
-                                <TrendingUp size={18} />
-                                15%
-                            </span>
-                        </div>
-                    </div>
-                    <div className="card">
-                        <div className="card-header">
-                            <div className="rounded-lg bg-blue-500/20 p-2 text-blue-500 transition-colors dark:bg-blue-600/20 dark:text-blue-600">
-                                <CreditCard size={26} />
-                            </div>
-                            <p className="card-title">Sales</p>
-                        </div>
-                        <div className="card-body bg-slate-100 transition-colors dark:bg-slate-950">
-                            <p className="text-3xl font-bold text-slate-900 transition-colors dark:text-slate-50">12,340</p>
-                            <span className="flex w-fit items-center gap-x-2 rounded-full border border-blue-500 px-2 py-1 font-medium text-blue-500 dark:border-blue-600 dark:text-blue-600">
-                                <TrendingUp size={18} />
-                                19%
-                            </span>
-                        </div>
-                    </div>
-                </div>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-7">
-                    <div className="card col-span-1 md:col-span-2 lg:col-span-4">
-                        <div className="card-header">
-                            <p className="card-title">Overview</p>
-                        </div>
-                        <div className="card-body p-0">
-                            <ResponsiveContainer
-                                width="100%"
-                                height={300}
-                            >
-                                <AreaChart
-                                    data={overviewData}
-                                    margin={{
-                                        top: 0,
-                                        right: 0,
-                                        left: 0,
-                                        bottom: 0,
-                                    }}
-                                >
-                                    <defs>
-                                        <linearGradient
-                                            id="colorTotal"
-                                            x1="0"
-                                            y1="0"
-                                            x2="0"
-                                            y2="1"
-                                        >
-                                            <stop
-                                                offset="5%"
-                                                stopColor="#2563eb"
-                                                stopOpacity={0.8}
-                                            />
-                                            <stop
-                                                offset="95%"
-                                                stopColor="#2563eb"
-                                                stopOpacity={0}
-                                            />
-                                        </linearGradient>
-                                    </defs>
-                                    <Tooltip
-                                        cursor={false}
-                                        formatter={(value) => `$${value}`}
-                                    />
+  const handleEditOrder = (order) => {
+    setCurrentOrder(order);
+    setFormData({
+      name: order.name || "",
+      contact: order.contact || "",
+      email: order.email || "",
+      kilo: order.kilo || "",
+      itemsCount: order.itemsCount || "",
+      service: order.service || "Wash & fold",
+      status: order.status || "pending"
+    });
+    setIsModalOpen(true);
+  };
 
-                                    <XAxis
-                                        dataKey="name"
-                                        strokeWidth={0}
-                                        stroke={theme === "light" ? "#475569" : "#94a3b8"}
-                                        tickMargin={6}
-                                    />
-                                    <YAxis
-                                        dataKey="total"
-                                        strokeWidth={0}
-                                        stroke={theme === "light" ? "#475569" : "#94a3b8"}
-                                        tickFormatter={(value) => `$${value}`}
-                                        tickMargin={6}
-                                    />
+  const handleCreateOrder = () => {
+    setCurrentOrder(null);
+    setFormData({
+      name: "",
+      contact: "",
+      email: "",
+      kilo: "",
+      itemsCount: "",
+      service: "Wash & fold",
+      status: "pending"
+    });
+    setIsModalOpen(true);
+  };
 
-                                    <Area
-                                        type="monotone"
-                                        dataKey="total"
-                                        stroke="#2563eb"
-                                        fillOpacity={1}
-                                        fill="url(#colorTotal)"
-                                    />
-                                </AreaChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </div>
-                    <div className="card col-span-1 md:col-span-2 lg:col-span-3">
-                        <div className="card-header">
-                            <p className="card-title">Recent Sales</p>
-                        </div>
-                        <div className="card-body h-[300px] overflow-auto p-0">
-                            {recentSalesData.map((sale) => (
-                                <div
-                                    key={sale.id}
-                                    className="flex items-center justify-between gap-x-4 py-2 pr-2"
-                                >
-                                    <div className="flex items-center gap-x-4">
-                                        <img
-                                            src={sale.image}
-                                            alt={sale.name}
-                                            className="size-10 flex-shrink-0 rounded-full object-cover"
-                                        />
-                                        <div className="flex flex-col gap-y-2">
-                                            <p className="font-medium text-slate-900 dark:text-slate-50">{sale.name}</p>
-                                            <p className="text-sm text-slate-600 dark:text-slate-400">{sale.email}</p>
-                                        </div>
-                                    </div>
-                                    <p className="font-medium text-slate-900 dark:text-slate-50">${sale.total}</p>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-                <div className="card">
-                    <div className="card-header">
-                        <p className="card-title">Top Orders</p>
-                    </div>
-                    <div className="card-body p-0">
-                        <div className="relative h-[500px] w-full flex-shrink-0 overflow-auto rounded-none [scrollbar-width:_thin]">
-                            <table className="table">
-                                <thead className="table-header">
-                                    <tr className="table-row">
-                                        <th className="table-head">#</th>
-                                        <th className="table-head">Product</th>
-                                        <th className="table-head">Price</th>
-                                        <th className="table-head">Status</th>
-                                        <th className="table-head">Rating</th>
-                                        <th className="table-head">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="table-body">
-                                    {topProducts.map((product) => (
-                                        <tr
-                                            key={product.number}
-                                            className="table-row"
-                                        >
-                                            <td className="table-cell">{product.number}</td>
-                                            <td className="table-cell">
-                                                <div className="flex w-max gap-x-4">
-                                                    <img
-                                                        src={product.image}
-                                                        alt={product.name}
-                                                        className="size-14 rounded-lg object-cover"
-                                                    />
-                                                    <div className="flex flex-col">
-                                                        <p>{product.name}</p>
-                                                        <p className="font-normal text-slate-600 dark:text-slate-400">{product.description}</p>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="table-cell">${product.price}</td>
-                                            <td className="table-cell">{product.status}</td>
-                                            <td className="table-cell">
-                                                <div className="flex items-center gap-x-2">
-                                                    <Star
-                                                        size={18}
-                                                        className="fill-yellow-600 stroke-yellow-600"
-                                                    />
-                                                    {product.rating}
-                                                </div>
-                                            </td>
-                                            <td className="table-cell">
-                                                <div className="flex items-center gap-x-4">
-                                                    <button className="text-blue-500 dark:text-blue-600">
-                                                        <PencilLine size={20} />
-                                                    </button>
-                                                    <button className="text-red-500">
-                                                        <Trash size={20} />
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-                <Footer />
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    
+    try {
+      const orderData = {
+        ...formData,
+        createdAt: currentOrder?.createdAt || new Date(),
+        kilo: parseInt(formData.kilo) || 0,
+        itemsCount: parseInt(formData.itemsCount) || 0
+      };
+
+      if (currentOrder) {
+        // Update existing order
+        await updateDoc(doc(db, "orders", currentOrder.id), orderData);
+      } else {
+        // Create new order
+        await addDoc(collection(db, "orders"), orderData);
+      }
+      
+      setIsModalOpen(false);
+    } catch (error) {
+      console.error("Error saving order:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteOrder = async (orderId) => {
+    if (window.confirm("Are you sure you want to delete this order?")) {
+      try {
+        await deleteDoc(doc(db, "orders", orderId));
+      } catch (error) {
+        console.error("Error deleting order:", error);
+      }
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "pending": return "bg-yellow-100 text-yellow-800";
+      case "washing": return "bg-blue-100 text-blue-800";
+      case "drying": return "bg-purple-100 text-purple-800";
+      case "completed": return "bg-green-100 text-green-800";
+      default: return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  if (loading && orders.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p>Loading orders...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold mb-8">Order Management</h1>
+      
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-500">Total Orders</p>
+              <p className="text-3xl font-bold">{stats.totalOrders}</p>
             </div>
-        );
-    };
+            <div className="p-3 rounded-full bg-blue-100 text-blue-600">
+              <Package size={24} />
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-500">Pending Orders</p>
+              <p className="text-3xl font-bold">{stats.pendingOrders}</p>
+            </div>
+            <div className="p-3 rounded-full bg-yellow-100 text-yellow-600">
+              <TrendingUp size={24} />
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-500">Completed Orders</p>
+              <p className="text-3xl font-bold">{stats.completedOrders}</p>
+            </div>
+            <div className="p-3 rounded-full bg-green-100 text-green-600">
+              <TrendingUp size={24} />
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-500">Estimated Revenue</p>
+              <p className="text-3xl font-bold">₱{stats.revenue.toLocaleString()}</p>
+            </div>
+            <div className="p-3 rounded-full bg-purple-100 text-purple-600">
+              <DollarSign size={24} />
+            </div>
+          </div>
+        </div>
+      </div>
 
-    export default OrderManagement;
+      {/* Orders Table */}
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="flex justify-between items-center p-4 border-b">
+          <h2 className="text-xl font-semibold">Orders</h2>
+          <button 
+            onClick={handleCreateOrder}
+            className="flex items-center gap-2 bg-pink-500 text-white px-4 py-2 rounded-lg hover:bg-pink-600 transition"
+          >
+            <Plus size={18} />
+            Create Order
+          </button>
+        </div>
+        
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact No.</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kilo</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No. of clothes</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Service</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {orders.map((order, index) => (
+                <tr key={order.id}>
+                  <td className="px-6 py-4 whitespace-nowrap">{index + 1}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{order.name}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{order.contact}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{order.email || "-"}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{order.kilo || "-"}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{order.itemsCount}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {order.createdAt?.toDate?.().toLocaleDateString() || "-"}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">{order.service}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(order.status)}`}>
+                      {order.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap flex gap-2">
+                    <button 
+                      onClick={() => handleEditOrder(order)}
+                      className="text-blue-500 hover:text-blue-700"
+                    >
+                      <PencilLine size={18} />
+                    </button>
+                    <button 
+                      onClick={() => handleDeleteOrder(order.id)}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <Trash size={18} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Order Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-md">
+            <div className="p-4 border-b">
+              <h3 className="text-lg font-semibold">
+                {currentOrder ? "Edit Order" : "Create New Order"}
+              </h3>
+            </div>
+            <form onSubmit={handleSubmit} className="p-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Name</label>
+                <input
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md p-2"
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Contact No.</label>
+                <input
+                  type="tel"
+                  name="contact"
+                  value={formData.contact}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md p-2"
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Email</label>
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md p-2"
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Kilo</label>
+                  <input
+                    type="number"
+                    name="kilo"
+                    value={formData.kilo}
+                    onChange={handleInputChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md p-2"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">No. of clothes</label>
+                  <input
+                    type="number"
+                    name="itemsCount"
+                    value={formData.itemsCount}
+                    onChange={handleInputChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md p-2"
+                    required
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Service</label>
+                <select
+                  name="service"
+                  value={formData.service}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md p-2"
+                >
+                  <option value="Wash & fold">Wash & fold</option>
+                  <option value="Dry cleaning">Dry cleaning</option>
+                  <option value="Ironing">Ironing</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Status</label>
+                <select
+                  name="status"
+                  value={formData.status}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md p-2"
+                >
+                  <option value="pending">Pending</option>
+                  <option value="washing">Washing</option>
+                  <option value="drying">Drying</option>
+                  <option value="completed">Completed</option>
+                </select>
+              </div>
+              
+              <div className="flex justify-end gap-4 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-md"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-pink-500 text-white rounded-md hover:bg-pink-600"
+                  disabled={loading}
+                >
+                  {loading ? "Saving..." : "Save"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default OrderManagement;

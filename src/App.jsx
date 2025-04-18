@@ -2,16 +2,19 @@
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import React from "react";
 
-import ProtectedRoute from "../../Yizzy/src/js/ProtectedRoute ";
+import ProtectedRoute from "./firebase/ProtectedRoute ";
 
 import HomePage from "./Homepage/HomePage";
+
 import LoginPage from "./auth/LoginPage";
-import BookingAndTracking from "./Booking/BookingAndTracking";
+import BookingAndTracking from "./Customer/BookingAndTracking";
+import UserProfile from "./Customer/UserProfile";
 
 import { ThemeProvider } from "./Dash/contexts/theme-context";
 import Layout from "./Dash/routes/layout";
 import DashboardPage from "./Dash/routes/dashboard/Dashboard";
 import OrderManagement from "./Dash/routes/dashboard/OrderManagement";
+
 
 
 function App() {
@@ -25,9 +28,15 @@ function App() {
             element: <LoginPage />,
         },
         {
+            path: "/userprofile",
+            element:<UserProfile/>,
+        },
+        {
             path: "/booking",
             element: <BookingAndTracking />,
         },
+        
+       
         {
             path: "/dashboard",
             element: (
