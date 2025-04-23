@@ -3,7 +3,7 @@ import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/aut
 import { auth, db } from "../firebase/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
-import pusa from "/Users/kevin/OneDrive/Desktop/Wash-it/Yizzy/src/assets/pusa.jpeg";
+import pusa from "../assets/pusa.jpeg";
 
 const LoginPage = () => {
   const [email, setEmail] = useState("");

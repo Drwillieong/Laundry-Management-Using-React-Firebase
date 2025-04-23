@@ -14,6 +14,7 @@ import { ThemeProvider } from "./Dash/contexts/theme-context";
 import Layout from "./Dash/routes/layout";
 import DashboardPage from "./Dash/routes/dashboard/Dashboard";
 import OrderManagement from "./Dash/routes/dashboard/OrderManagement";
+import Booking from "./Dash/routes/dashboard/Booking";
 
 
 
@@ -54,16 +55,17 @@ function App() {
                     element: <OrderManagement/>,
                 },
                 {
-                    path: "history",
-                    element: <h1 className="title">Reports</h1>,
+                    path: "booking-dash",
+                    element: <Booking/>,
                 },
                 {
-                    path: "booking-dash",
-                    element: <h1 className="title">Customers</h1>,
+                    path: "history",
+                  
                 },
+               
                 {
                     path: "settings",
-                    element: <h1 className="title">New Customer</h1>,
+                   
                 },
             ],
         },

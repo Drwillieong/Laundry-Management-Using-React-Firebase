@@ -18,15 +18,16 @@ export const navbarLinks = [
                 path: "/dashboard/order",
             },
             {
-                label: "History",
-                icon: NotepadText,
-                path: "/dashboard/history",
-            },
-            {
                 label: "Booking",
                 icon:  Users,
                 path: "/dashboard/booking-dash",
             },
+            {
+                label: "History",
+                icon: NotepadText,
+                path: "/dashboard/history",
+            },
+           
             {
                 label: "Settings",
                 icon: Settings,

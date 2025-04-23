@@ -26,13 +26,13 @@ export const Header = ({ collapsed, setCollapsed }) => {
     }, []);
 
     return (
-        <header className="relative z-10 flex h-[60px] items-center justify-between bg-white px-4 shadow-md transition-colors dark:bg-slate-900">
+        <header className="relative z-10 flex h-[60px] items-center justify-between bg-pink-500 px-4 shadow-md transition-colors dark:bg-slate-900">
             <div className="flex items-center gap-x-3">
                 <button
                     className="btn-ghost size-10"
                     onClick={() => setCollapsed(!collapsed)}
                 >
-                    <ChevronsLeft className={collapsed && "rotate-180"} />
+                    <ChevronsLeft   className={collapsed && "rotate-180"} />
                 </button>
             </div>
             <div className="flex items-center gap-x-3">
@@ -41,11 +41,11 @@ export const Header = ({ collapsed, setCollapsed }) => {
                     onClick={() => setTheme(theme === "light" ? "dark" : "light")}
                 >
                     <Sun
-                        size={20}
+                        size={55}
                         className="dark:hidden"
                     />
                     <Moon
-                        size={20}
+                        size={30}
                         className="hidden dark:block"
                     />
                 </button>

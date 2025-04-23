@@ -13,7 +13,7 @@ export default function LaundryService() {
           { step: "3", title: "Delivery", desc: "You can relax and take a load off! We’ll deliver your laundry expertly cleaned and folded right to your door!" },
         ].map((item, index) => (
           <div key={index} className="relative bg-pink-200 p-20 rounded-lg shadow-lg w-full md:w-1/3 flex flex-col items-center">
-            <div className="absolute -top-5 bg-white text-pink-500 font-bold w-18 h-18 flex items-center justify-center rounded-full text-xl shadow-lg border-2 border-pink-500">
+            <div className="absolute -top-5 bg-white text-pink-500 font-bold w-18 h-18 flex items-center px-3 justify-center rounded-full text-xl shadow-lg border-2 border-pink-500">
               {item.step}
             </div>
             <h3 className="mt-8 text-3xl font-bold text-gray-900">{item.title}</h3>
