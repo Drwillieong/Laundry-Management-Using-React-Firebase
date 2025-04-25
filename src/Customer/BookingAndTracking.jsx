@@ -1,8 +1,27 @@
 import React, { useState, useEffect } from "react";
 import { auth, db } from "../firebase/firebase";
-import { collection, addDoc, doc, updateDoc, deleteDoc, query, where, onSnapshot } from "firebase/firestore";
+import { collection, addDoc, doc, getDoc, updateDoc, deleteDoc, query, where, onSnapshot } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 import { onAuthStateChanged } from "firebase/auth";
+import Modal from 'react-modal';
+
+// Set modal styles
+const customStyles = {
+  content: {
+    top: '50%',
+    left: '50%',
+    right: 'auto',
+    bottom: 'auto',
+    marginRight: '-50%',
+    transform: 'translate(-50%, -50%)',
+    width: '80%',
+    maxWidth: '600px',
+    borderRadius: '8px',
+    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+  },
+};
+
+Modal.setAppElement('#root');
 
 const BookingAndTracking = () => {
   const navigate = useNavigate();
@@ -26,7 +45,9 @@ const BookingAndTracking = () => {
   const [authLoading, setAuthLoading] = useState(true);
   const [userOrders, setUserOrders] = useState([]);
   const [editingOrderId, setEditingOrderId] = useState(null);
-  const [unsubscribeOrderListener, setUnsubscribeOrderListener] = useState(null);
+  const [modalIsOpen, setModalIsOpen] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [showAllOrders, setShowAllOrders] = useState(false);
 
   // Generate a 5-digit alphanumeric order ID
   const generateShortOrderId = () => {
@@ -49,8 +70,10 @@ const BookingAndTracking = () => {
     return date.toISOString().split('T')[0];
   };
 
-  // Set up real-time order listener when user is authenticated
+  // Set up real-time listener for user orders
   useEffect(() => {
+    let unsubscribeOrders = () => {};
+
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       if (user) {
         try {
@@ -64,29 +87,20 @@ const BookingAndTracking = () => {
               address: userDoc.data().address || "",
               userId: user.uid
             }));
-            
-            // Set up real-time listener for user's orders
-            const q = query(collection(db, "orders"), where("userId", "==", user.uid));
-            const unsubscribe = onSnapshot(q, (querySnapshot) => {
-              const orders = [];
-              querySnapshot.forEach((doc) => {
-                orders.push({ id: doc.id, ...doc.data() });
-              });
-              setUserOrders(orders);
-              
-              // If tracking an order, update the tracking result if it's in the snapshot
-              if (trackingId) {
-                const trackedOrder = orders.find(order => 
-                  order.orderId === trackingId || order.id === trackingId
-                );
-                if (trackedOrder) {
-                  setTrackingResult(trackedOrder);
-                }
-              }
-            });
-            
-            setUnsubscribeOrderListener(() => unsubscribe);
           }
+
+          // Set up real-time listener for user's orders
+          const q = query(collection(db, "orders"), where("userId", "==", user.uid));
+          unsubscribeOrders = onSnapshot(q, (querySnapshot) => {
+            const orders = [];
+            querySnapshot.forEach((doc) => {
+              orders.push({ id: doc.id, ...doc.data() });
+            });
+            // Sort by date (newest first)
+            orders.sort((a, b) => b.createdAt?.toDate() - a.createdAt?.toDate());
+            setUserOrders(orders);
+          });
+
         } catch (error) {
           console.error("Error fetching user data:", error);
         } finally {
@@ -99,13 +113,11 @@ const BookingAndTracking = () => {
 
     return () => {
       unsubscribeAuth();
-      if (unsubscribeOrderListener) {
-        unsubscribeOrderListener();
-      }
+      unsubscribeOrders();
     };
-  }, [navigate, trackingId]);
+  }, [navigate]);
 
-  // Set up real-time listener for tracked order
+  // Set up real-time listener for tracking
   useEffect(() => {
     if (!trackingId) return;
 
@@ -161,29 +173,12 @@ const BookingAndTracking = () => {
     }
   };
 
-  const handleTrackOrder = async (e) => {
+  const handleTrackOrder = (e) => {
     e.preventDefault();
     if (!trackingId.trim()) return;
-    
     setLoading(true);
-    try {
-      const q = query(collection(db, "orders"), where("orderId", "==", trackingId));
-      const querySnapshot = await getDocs(q);
-      
-      if (querySnapshot.empty) {
-        setTrackingResult(null);
-        alert("No order found with that ID");
-      } else {
-        querySnapshot.forEach((doc) => {
-          setTrackingResult({ id: doc.id, ...doc.data() });
-        });
-      }
-    } catch (error) {
-      console.error("Error tracking order:", error);
-      alert("Error tracking order. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+    // Tracking is now handled by the real-time listener
+    setLoading(false);
   };
 
   const handleEditOrder = (order) => {
@@ -201,6 +196,8 @@ const BookingAndTracking = () => {
       userId: order.userId,
       createdAt: order.createdAt
     });
+    // Scroll to the form
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleUpdateOrder = async (e) => {
@@ -249,6 +246,23 @@ const BookingAndTracking = () => {
     }
   };
 
+  const openOrderDetails = (order) => {
+    setSelectedOrder(order);
+    setModalIsOpen(true);
+  };
+
+  const closeModal = () => {
+    setModalIsOpen(false);
+    setSelectedOrder(null);
+  };
+
+  const toggleShowAllOrders = () => {
+    setShowAllOrders(!showAllOrders);
+  };
+
+  // Filter orders based on showAllOrders state
+  const displayedOrders = showAllOrders ? userOrders : userOrders.slice(0, 5);
+
   if (authLoading) {
     return (
       <div className="bg-gray-100 min-h-screen flex items-center justify-center">
@@ -277,138 +291,146 @@ const BookingAndTracking = () => {
         </div>
       </nav>
 
-    
-        <div className="max-w-3xl mx-auto mt-10 bg-white p-6 rounded-lg shadow-md">
-  <h2 className="text-2xl font-semibold text-center text-pink-400">
-    {editingOrderId ? "Edit Your Booking" : "Book a Laundry Pickup"}
-  </h2>
-  <form 
-    className="mt-4 space-y-4" 
-    onSubmit={editingOrderId ? handleUpdateOrder : handleBookingSubmit}
-  >
-    <input
-      type="text"
-      name="name"
-      value={bookingData.name}
-      onChange={handleBookingChange}
-      placeholder="Name"
-      className="w-full p-2 border rounded-md"
-      required
-    />
-    <input
-      type="tel"
-      name="contact"
-      value={bookingData.contact}
-      onChange={handleBookingChange}
-      placeholder="Contact Number"
-      className="w-full p-2 border rounded-md"
-      required
-    />
-    <input
-      type="text"
-      name="address"
-      value={bookingData.address}
-      onChange={handleBookingChange}
-      placeholder="Address"
-      className="w-full p-2 border rounded-md"
-      required
-    />
-    <input
-      type="text"
-      name="landmark"
-      value={bookingData.landmark}
-      onChange={handleBookingChange}
-      placeholder="Landmark (Optional)"
-      className="w-full p-2 border rounded-md"
-    />
-    <div className="grid grid-cols-2 gap-4">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Pickup Date</label>
-        <input
-          type="date"
-          name="pickupDate"
-          value={bookingData.pickupDate}
-          onChange={handleBookingChange}
-          min={getMinDate()}
-          max={getMaxDate()}
-          className="w-full p-2 border rounded-md"
-          required
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Pickup Time</label>
-        <select
-          name="pickupTime"
-          value={bookingData.pickupTime}
-          onChange={handleBookingChange}
-          className="w-full p-2 border rounded-md"
-          required
+      <div className="max-w-3xl mx-auto mt-10 bg-white p-6 rounded-lg shadow-md">
+        <h2 className="text-2xl font-semibold text-center text-pink-400">
+          {editingOrderId ? "Edit Your Booking" : "Book a Laundry Pickup"}
+        </h2>
+        <form 
+          className="mt-4 space-y-4" 
+          onSubmit={editingOrderId ? handleUpdateOrder : handleBookingSubmit}
         >
-          <option value="9am-10am">9:00 AM - 10:00 AM</option>
-          <option value="10am-11am">10:00 AM - 11:00 AM</option>
-          <option value="11am-12pm">11:00 AM - 12:00 PM</option>
-          <option value="3pm-4pm">3:00 PM - 4:00 PM</option>
-        </select>
+          <input
+            type="text"
+            name="name"
+            value={bookingData.name}
+            onChange={handleBookingChange}
+            placeholder="Name"
+            className="w-full p-2 border rounded-md"
+            required
+          />
+          <input
+            type="tel"
+            name="contact"
+            value={bookingData.contact}
+            onChange={handleBookingChange}
+            placeholder="Contact Number"
+            className="w-full p-2 border rounded-md"
+            required
+          />
+          <input
+            type="text"
+            name="address"
+            value={bookingData.address}
+            onChange={handleBookingChange}
+            placeholder="Address"
+            className="w-full p-2 border rounded-md"
+            required
+          />
+          <input
+            type="text"
+            name="landmark"
+            value={bookingData.landmark}
+            onChange={handleBookingChange}
+            placeholder="Landmark (Optional)"
+            className="w-full p-2 border rounded-md"
+          />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Pickup Date</label>
+              <input
+                type="date"
+                name="pickupDate"
+                value={bookingData.pickupDate}
+                onChange={handleBookingChange}
+                min={getMinDate()}
+                max={getMaxDate()}
+                className="w-full p-2 border rounded-md"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Pickup Time</label>
+              <select
+                name="pickupTime"
+                value={bookingData.pickupTime}
+                onChange={handleBookingChange}
+                className="w-full p-2 border rounded-md"
+                required
+              >
+                <option value="9am-10am">9:00 AM - 10:00 AM</option>
+                <option value="10am-11am">10:00 AM - 11:00 AM</option>
+                <option value="11am-12pm">11:00 AM - 12:00 PM</option>
+                <option value="3pm-4pm">3:00 PM - 4:00 PM</option>
+              </select>
+            </div>
+          </div>
+          <input
+            type="number"
+            name="itemsCount"
+            value={bookingData.itemsCount}
+            onChange={handleBookingChange}
+            placeholder="Number of Clothes"
+            className="w-full p-2 border rounded-md"
+            required
+            min="1"
+          />
+          <textarea
+            name="instructions"
+            value={bookingData.instructions}
+            onChange={handleBookingChange}
+            placeholder="Special Instructions"
+            className="w-full p-2 border rounded-md"
+          ></textarea>
+          <div className="flex gap-4">
+            <button
+              type="submit"
+              className="flex-1 bg-pink-400 text-white p-2 rounded-md hover:bg-pink-600 transition"
+              disabled={loading}
+            >
+              {loading ? "Processing..." : editingOrderId ? "Update Booking" : "Submit Booking"}
+            </button>
+            {editingOrderId && (
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingOrderId(null);
+                  setBookingData({
+                    name: "",
+                    contact: "",
+                    address: "",
+                    landmark: "",
+                    pickupDate: "",
+                    pickupTime: "9am-10am",
+                    itemsCount: "",
+                    instructions: "",
+                    status: "pending",
+                    userId: auth.currentUser?.uid || "",
+                    createdAt: null
+                  });
+                }}
+                className="flex-1 bg-gray-400 text-white p-2 rounded-md hover:bg-gray-500 transition"
+              >
+                Cancel Edit
+              </button>
+            )}
+          </div>
+        </form>
       </div>
-    </div>
-    <input
-      type="number"
-      name="itemsCount"
-      value={bookingData.itemsCount}
-      onChange={handleBookingChange}
-      placeholder="Number of Clothes"
-      className="w-full p-2 border rounded-md"
-      required
-      min="1"
-    />
-    <textarea
-      name="instructions"
-      value={bookingData.instructions}
-      onChange={handleBookingChange}
-      placeholder="Special Instructions"
-      className="w-full p-2 border rounded-md"
-    ></textarea>
-    <div className="flex gap-4">
-      <button
-        type="submit"
-        className="flex-1 bg-pink-400 text-white p-2 rounded-md hover:bg-pink-600 transition"
-        disabled={loading}
-      >
-        {loading ? "Processing..." : editingOrderId ? "Update Booking" : "Submit Booking"}
-      </button>
-      {editingOrderId && (
-        <button
-          type="button"
-          onClick={() => {
-            setEditingOrderId(null);
-            setBookingData({
-              name: "",
-              contact: "",
-              address: "",
-              landmark: "",
-              pickupDate: "",
-              pickupTime: "9am-10am",
-              itemsCount: "",
-              instructions: "",
-              status: "pending",
-              userId: auth.currentUser?.uid || "",
-              createdAt: null
-            });
-          }}
-          className="flex-1 bg-gray-400 text-white p-2 rounded-md hover:bg-gray-500 transition"
-        >
-          Cancel Edit
-        </button>
-      )}
-    </div>
-  </form>
-</div>
-      
 
       {/* My Orders Section */}
-      {userOrders.length > 0 && ( 
+      {userOrders.length > 0 && (
         <div className="max-w-3xl mx-auto mt-10 bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-2xl font-semibold text-center text-blue-500 mb-4">My Orders</h2>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-semibold text-center text-blue-500">My Orders</h2>
+            {userOrders.length > 5 && (
+              <button
+                onClick={toggleShowAllOrders}
+                className="text-blue-500 hover:text-blue-700 text-sm"
+              >
+                {showAllOrders ? "Show Less" : "Show All"}
+              </button>
+            )}
+          </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -421,7 +443,7 @@ const BookingAndTracking = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {userOrders.map((order) => (
+                {displayedOrders.map((order) => (
                   <tr key={order.id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {order.orderId || order.id.substring(0, 8)}
@@ -445,11 +467,19 @@ const BookingAndTracking = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex space-x-2">
                         <button
-                          onClick={() => handleEditOrder(order)}
+                          onClick={() => openOrderDetails(order)}
                           className="text-blue-600 hover:text-blue-900"
                         >
-                          Edit
+                          View
                         </button>
+                        {order.status === 'pending' && (
+                          <button
+                            onClick={() => handleEditOrder(order)}
+                            className="text-indigo-600 hover:text-indigo-900"
+                          >
+                            Edit
+                          </button>
+                        )}
                         <button
                           onClick={() => handleCancelOrder(order.id)}
                           className="text-red-600 hover:text-red-900"
@@ -467,7 +497,24 @@ const BookingAndTracking = () => {
       )}
 
       <div className="max-w-3xl mx-auto mt-10 mb-10 bg-white p-6 rounded-lg shadow-md">
-    
+        <h2 className="text-2xl font-semibold text-center text-green-500">Track Your Order</h2>
+        <form className="mt-4 space-y-4" onSubmit={handleTrackOrder}>
+          <input
+            type="text"
+            value={trackingId}
+            onChange={(e) => setTrackingId(e.target.value)}
+            placeholder="Enter Order Number"
+            className="w-full p-2 border rounded-md"
+            required
+          />
+          <button
+            type="submit"
+            className="w-full bg-green-500 text-white p-2 rounded-md hover:bg-green-600 transition"
+            disabled={loading}
+          >
+            {loading ? "Searching..." : "Track Order"}
+          </button>
+        </form>
 
         {trackingResult && (
           <div className="mt-6 p-4 bg-gray-50 rounded-md">
@@ -496,6 +543,59 @@ const BookingAndTracking = () => {
           </div>
         )}
       </div>
+
+      {/* Order Details Modal */}
+      <Modal
+        isOpen={modalIsOpen}
+        onRequestClose={closeModal}
+        style={customStyles}
+        contentLabel="Order Details"
+      >
+        {selectedOrder && (
+          <div className="p-4">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-semibold">Order Details</h2>
+              <button onClick={closeModal} className="text-gray-500 hover:text-gray-700">
+                ✕
+              </button>
+            </div>
+            <div className="space-y-3">
+              <p><span className="font-semibold">Order ID:</span> {selectedOrder.orderId || selectedOrder.id.substring(0, 8)}</p>
+              <p><span className="font-semibold">Customer:</span> {selectedOrder.name}</p>
+              <p><span className="font-semibold">Contact:</span> {selectedOrder.contact}</p>
+              <p><span className="font-semibold">Address:</span> {selectedOrder.address}</p>
+              {selectedOrder.landmark && <p><span className="font-semibold">Landmark:</span> {selectedOrder.landmark}</p>}
+              <p><span className="font-semibold">Pickup Date:</span> {selectedOrder.pickupDate} at {selectedOrder.pickupTime}</p>
+              <p><span className="font-semibold">Items Count:</span> {selectedOrder.itemsCount}</p>
+              {selectedOrder.instructions && (
+                <p><span className="font-semibold">Instructions:</span> {selectedOrder.instructions}</p>
+              )}
+              <p>
+                <span className="font-semibold">Status:</span> 
+                <span className={`ml-2 px-2 py-1 rounded-full text-xs ${
+                  selectedOrder.status === 'pending' ? 'bg-yellow-200 text-yellow-800' :
+                  selectedOrder.status === 'approved' ? 'bg-blue-200 text-blue-800' :
+                  selectedOrder.status === 'completed' ? 'bg-green-200 text-green-800' :
+                  'bg-red-200 text-red-800'
+                }`}>
+                  {selectedOrder.status}
+                </span>
+              </p>
+              {selectedOrder.createdAt && (
+                <p><span className="font-semibold">Created At:</span> {selectedOrder.createdAt.toDate().toLocaleString()}</p>
+              )}
+            </div>
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={closeModal}
+                className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };

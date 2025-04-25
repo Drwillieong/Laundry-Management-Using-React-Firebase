@@ -81,7 +81,7 @@ export const Header = ({ collapsed, setCollapsed }) => {
                                 onClick={() => {            
                                     
                                     setDropdownOpen(false);
-                                    window.location.replace('/login');
+                                    navigate('/login');
                                 }}
                                 
                             >

@@ -19,7 +19,7 @@ export const Sidebar = forwardRef(({ collapsed }, ref) => {
                 collapsed ? "max-md:-left-full" : "max-md:left-0",
             )}
         >
-            <div className="flex gap-x-5 p-3">
+            <div className="flex gap-x-3 p-3">
               
                 {!collapsed && <p className="text-lg font-medium text-slate-900 transition-colors dark:text-slate-50">Wash-IT</p>}
             </div>

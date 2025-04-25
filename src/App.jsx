@@ -20,7 +20,7 @@ import Booking from "./Dash/routes/dashboard/Booking";
 
 function App() {
     const router = createBrowserRouter([
-        {
+        {   
             path: "/",
             element: <HomePage />,
         },
