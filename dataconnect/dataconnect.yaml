@@ -1,0 +1,12 @@
+specVersion: "v1"
+serviceId: "laundry-management-using-react-firebase"
+location: "us-central1"
+schema:
+  source: "./schema"
+  datasource:
+    postgresql:
+      database: "fdcdb"
+      cloudSql:
+        instanceId: "laundry-management-using-react-firebase-fdc"
+      # schemaValidation: "COMPATIBLE"
+connectorDirs: ["./connector"]
