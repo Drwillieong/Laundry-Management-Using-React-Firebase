@@ -1,6 +1,6 @@
 import { forwardRef } from "react";
 import { NavLink } from "react-router-dom";
-
+import {   NotepadText, Settings, Calendar,User } from "lucide-react";  
 import { navbarLinks } from "../constants/CustomerIndex";
 
 

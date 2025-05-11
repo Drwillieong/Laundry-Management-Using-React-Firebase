@@ -4,6 +4,9 @@ import { auth, db } from "../firebase/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 import pusa from "../assets/pusa.jpeg";
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faFacebook, faInstagram } from '@fortawesome/free-brands-svg-icons';
+import basket from "../assets/4-removebg-preview.png";
 
 const LoginPage = () => {
   const [email, setEmail] = useState("");
@@ -183,29 +186,62 @@ const LoginPage = () => {
       </div>
 
       {/* Footer */}
-      <footer id="contact" className="bg-gray-900 text-white py-12 mt-16">
-        <div className="max-w-6xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left">
-          <div>
-            <h3 className="text-xl font-bold">Wash It Izzy</h3>
-            <p className="mt-2 text-gray-400">God will provide.</p>
-          </div>
-          <div>
-            <h4 className="text-lg font-semibold">Quick Links</h4>
-            <ul className="mt-2 space-y-2">
-              <li><a href="/" className="text-gray-400 hover:text-white">Home</a></li>
-              <li><a href="#contact" className="text-gray-400 hover:text-white">Contact</a></li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="text-lg font-semibold">Get in Touch</h4>
-            <p className="mt-2 text-gray-400">Email: washitizzy@email.com</p>
-            <p className="text-gray-400">Phone: 123456789</p>
-          </div>
-        </div>
-        <div className="text-center text-gray-500 text-sm mt-8">
-          &copy; 2025 Wash It Izzy - All Rights Reserved.
-        </div>
-      </footer>
+      <footer id="contact" className="bg-pink-400 text-white py-12">
+  {/* Main Footer Content - now with vertical centering */}
+  <div className="max-w-6xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left items-center">
+    {/* Socials */}
+    <div className="py-4">
+      <h3 className="text-xl font-bold mb-4">Socials</h3>
+      <div className="flex justify-center md:justify-start space-x-6">
+        <a 
+          href="https://www.facebook.com/washitizzy" 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          className="text-white hover:text-pink-200 transition-colors"
+        >
+          <FontAwesomeIcon icon={faFacebook} size="2x" />
+        </a>
+        <a 
+          href="https://www.instagram.com" 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          className="text-white hover:text-pink-200 transition-colors"
+        >
+          <FontAwesomeIcon icon={faInstagram} size="2x" />
+        </a>
+      </div>
+    </div>
+
+    {/* Quick Links */}
+    <div className="py-4">
+      <h4 className="text-lg font-semibold mb-4">Quick Links</h4>
+      <ul className="space-y-2">
+        <li>
+          <a href="#service" className="text-white hover:text-pink-200 transition-colors">
+            Services
+          </a>
+        </li>
+        <li>
+          <a href="#contact" className="text-white hover:text-pink-200 transition-colors">
+            Contact
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    {/* Contact Info */}
+    <div className="py-4">
+      <h4 className="text-lg font-semibold mb-4">Get in Touch</h4>
+      <p className="text-white">Email: washitizzy@email.com</p>
+      <p className="text-white">Phone: 123456789</p>
+    </div>
+  </div>
+
+  {/* Copyright - moved down slightly */}
+  <div className="text-center text-white text-sm mt-12 pb-4">
+    &copy; {new Date().getFullYear()} Wash It Izzy - All Rights Reserved.
+  </div>
+</footer>
     </div>
   );
 };

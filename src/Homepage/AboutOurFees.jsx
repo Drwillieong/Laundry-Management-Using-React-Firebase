@@ -114,7 +114,7 @@ const AboutOurFees = () => {
               <img 
                 src={servicefee}
                 alt="Service Fee" 
-                className="mb-3 sm:mb-4 rounded-lg w-full h-32 sm:h-36 object-cover" 
+                className="mb-3 sm:mb-4 rounded-lg w-auto h-32 sm:h-36 object-cover" 
               />
               <h3 className="text-xl sm:text-2xl font-semibold mb-1 sm:mb-2 text-center">Service Fee</h3>
               <p className="text-gray-600 text-center text-sm sm:text-base">
@@ -127,7 +127,7 @@ const AboutOurFees = () => {
               <img 
                 src={iron} 
                 alt="Free Pickup & Delivery" 
-                className="mb-3 sm:mb-4 rounded-lg w-full h-32 sm:h-36 object-cover" 
+                className="mb-3 sm:mb-4 rounded-lg w-auto h-32 sm:h-36 object-cover" 
               />
               <h3 className="text-xl sm:text-2xl font-semibold mb-1 sm:mb-2 text-center">FREE Pickup & Delivery</h3>
               <p className="text-gray-600 text-center text-sm sm:text-base">
@@ -140,7 +140,7 @@ const AboutOurFees = () => {
               <img 
                 src={fold}
                 alt="Payment Options" 
-                className="mb-3 sm:mb-4 rounded-lg w-full h-32 sm:h-36 object-cover" 
+                className="mb-3 sm:mb-4 rounded-lg w-auto h-32 sm:h-36 object-cover" 
               />
               <h3 className="text-xl sm:text-2xl font-semibold mb-1 sm:mb-2 text-center">Payment Options</h3>
               <p className="text-gray-600 text-center text-sm sm:text-base">

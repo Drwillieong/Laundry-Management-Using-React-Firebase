@@ -9,6 +9,18 @@ import {
 } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 
+const calambaBarangays = [
+  "Banlic", "Barandal", "Batino", "Banadero", "Bubuyan", "Bucal", "Bunggo", 
+  "Burol", "Camaligan", "Canlubang", "Halang", "Hornalan", 
+  "Kay-Anlog", "La Mesa", "Laguerta", "Lawa", "Lecheria", 
+  "Lingga", "Looc", "Mabato", "Majada Labas", "Makiling", 
+  "Mapagong", "Masili", "Maunong", "Mayapa", "Paciano Rizal", 
+  "Palingon", "Palo-Alto", "Pansol", "Parian", "Prinza", 
+  "Punta", "Puting Lupa", "Real", "Saimsim", "Sampiruhan", 
+  "San Cristobal", "San Jose", "San Juan", "Sirang Lupa", 
+  "Sucol", "Turbina", "Ulango", "Uwisan"
+];
+
 const Profile = () => {
   const [userData, setUserData] = useState({
     firstName: "",
@@ -239,14 +251,18 @@ const Profile = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Barangay</label>
-                  <input
-                    type="text"
+                  <select
                     name="barangay"
                     value={userData.barangay}
                     onChange={handleInputChange}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-pink-500 focus:border-pink-500"
                     required
-                  />
+                  >
+                    <option value="">Select Barangay</option>
+                    {calambaBarangays.map(barangay => (
+                      <option key={barangay} value={barangay}>{barangay}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Block/Lot (optional)</label>

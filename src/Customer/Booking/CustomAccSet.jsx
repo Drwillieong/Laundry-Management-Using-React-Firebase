@@ -4,6 +4,13 @@ import { doc, setDoc, getDoc } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 import { onAuthStateChanged, sendEmailVerification } from "firebase/auth";
 
+const freePickupBarangays = [
+  "Brgy. 1", "Brgy. 2", "Brgy. 3", "Brgy. 4", "Brgy. 5", "Brgy. 6", "Brgy. 7",
+  "Lecheria (Up to City Cemetery)", "San Juan", "San Jose", 
+  "Looc (Bukana, Mahogany, Vermont)", "Bañadero (Bukana, Bria Homes)",
+  "Palingon", "Lingga", "Sampiruhan", "Parian (Bantayan/Villa Carpio)"
+];
+
 const calambaBarangays = [
   "Banlic", "Barandal", "Batino", "Bubuyan", "Bucal", "Bunggo", 
   "Burol", "Camaligan", "Canlubang", "Halang", "Hornalan", 
@@ -23,6 +30,7 @@ const CustomerAccountSetup = () => {
   const [loading, setLoading] = useState(false);
   const [verificationSent, setVerificationSent] = useState(false);
   const [initialDataLoaded, setInitialDataLoaded] = useState(false);
+  const [showFreeAreas, setShowFreeAreas] = useState(false);
   
   const [formData, setFormData] = useState({
     firstName: "",
@@ -50,7 +58,6 @@ const CustomerAccountSetup = () => {
         setUser(currentUser);
         
         try {
-          // Fetch user data from Firestore
           const userDoc = await getDoc(doc(db, "users", currentUser.uid));
           
           if (userDoc.exists()) {
@@ -61,14 +68,12 @@ const CustomerAccountSetup = () => {
               lastName: userData.lastName || "",
               contact: userData.contact || "",
               email: currentUser.email || "",
-              // Address fields will remain empty as they haven't been filled yet
               barangay: userData.address?.barangay || "",
               street: userData.address?.street || "",
               blockLot: userData.address?.blockLot || "",
               landmark: userData.address?.landmark || ""
             }));
           } else {
-            // If no user doc exists, just set the email
             setFormData(prev => ({
               ...prev,
               email: currentUser.email || ""
@@ -181,7 +186,7 @@ const CustomerAccountSetup = () => {
         createdAt: new Date(),
         emailVerified: auth.currentUser?.emailVerified || false,
         role: "customer"
-      }, { merge: true }); // Use merge to update existing fields without overwriting
+      }, { merge: true });
 
       navigate('/schedule');
     } catch (error) {
@@ -405,6 +410,41 @@ const CustomerAccountSetup = () => {
           {step === 2 && (
             <div>
               <h2 className="text-2xl font-bold text-gray-800 mb-6">Address Details</h2>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <div className="flex items-start">
+                  <div className="flex-shrink-0 mt-1">
+                    <svg className="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-blue-800">FREE LAUNDRY PICK-UP AND DELIVERY🎉</h3>
+                    <div className="mt-1 text-sm text-blue-700">
+                      <p className="mb-2">For barangays near our shop:</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                        {freePickupBarangays.map((barangay, index) => (
+                          <div key={index} className="flex items-center">
+                            <svg className="h-4 w-4 text-green-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            <span>{barangay}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="mt-2 font-medium">Other areas near our shop and other areas have fees</p>
+                    </div>
+                    {!showFreeAreas && (
+                      <button
+                        onClick={() => setShowFreeAreas(true)}
+                        className="mt-2 text-sm text-blue-600 hover:text-blue-800 font-medium"
+                      >
+                        Show all free areas
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
               <p className="text-gray-600 mb-8">
                 We currently serve only Calamba City. Please provide your complete address for laundry pickup and delivery.
               </p>
@@ -479,12 +519,12 @@ const CustomerAccountSetup = () => {
           )}
           
           {/* Navigation Buttons */}
-          <div className="flex justify-between mt-8 border-t pt-6">
+          <div className="flex justify-between gap-4 mt-8 border-t pt-6">
             {step > 1 && (
               <button
                 type="button"
                 onClick={handlePrev}
-                className="px-6 py-3 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors duration-200 font-medium flex items-center"
+                className="px- py-3 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors duration-200 font-medium flex items-center"
               >
                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
