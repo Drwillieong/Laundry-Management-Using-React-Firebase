@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
 import { auth, db } from "../firebase/firebase";
 import { doc, getDoc } from "firebase/firestore";
@@ -6,7 +6,8 @@ import { useNavigate } from "react-router-dom";
 import pusa from "../assets/pusa.jpeg";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faFacebook, faInstagram } from '@fortawesome/free-brands-svg-icons';
-import basket from "../assets/4-removebg-preview.png";
+
+import { RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth";
 
 const LoginPage = () => {
   const [email, setEmail] = useState("");
@@ -15,19 +16,79 @@ const LoginPage = () => {
   const [showResetForm, setShowResetForm] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [resetMessage, setResetMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [showCaptcha, setShowCaptcha] = useState(false);
+  const [recaptchaVerifier, setRecaptchaVerifier] = useState(null);
   const navigate = useNavigate();
+
+  // Initialize reCAPTCHA
+  useEffect(() => {
+    if (showCaptcha && !recaptchaVerifier) {
+      const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        'size': 'invisible',
+        'callback': () => {
+          // This will be called when reCAPTCHA is solved
+        },
+        'expired-callback': () => {
+          setError('reCAPTCHA expired. Please try again.');
+        }
+      });
+      setRecaptchaVerifier(verifier);
+    }
+  }, [showCaptcha, recaptchaVerifier]);
+
+  // Rate limiting for failed attempts
+  useEffect(() => {
+    if (failedAttempts >= 3) {
+      setShowCaptcha(true);
+    }
+  }, [failedAttempts]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
+    setIsLoading(true);
+
+    // Basic client-side validation
+    if (!email || !password) {
+      setError("Please fill in all fields");
+      setIsLoading(false);
+      return;
+    }
+
+    // Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError("Please enter a valid email address");
+      setIsLoading(false);
+      return;
+    }
 
     try {
+      // If there were 3 or more failed attempts, require reCAPTCHA
+      if (failedAttempts >= 3 && recaptchaVerifier) {
+        await recaptchaVerifier.verify();
+      }
+
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
+
+      // Check if email is verified
+      if (!user.emailVerified) {
+        await auth.signOut();
+        setError("Please verify your email before logging in. Check your inbox for a verification link.");
+        setIsLoading(false);
+        return;
+      }
 
       const userDoc = await getDoc(doc(db, "users", user.uid));
       if (userDoc.exists()) {
         const userRole = userDoc.data().role;
+
+        // Reset failed attempts on successful login
+        setFailedAttempts(0);
+        setShowCaptcha(false);
 
         if (userRole === "admin") {
           alert("Admin login successful! Redirecting to dashboard...");
@@ -42,8 +103,29 @@ const LoginPage = () => {
         setError("User role not found.");
       }
     } catch (err) {
-      setError(`Login failed: ${err.message}`);
+      // Increment failed attempts counter
+      setFailedAttempts(prev => prev + 1);
+      
+      // User-friendly error messages
+      let errorMessage = "Login failed";
+      switch (err.code) {
+        case "auth/user-not-found":
+        case "auth/wrong-password":
+          errorMessage = "Invalid email or password";
+          break;
+        case "auth/too-many-requests":
+          errorMessage = "Account temporarily locked due to too many failed attempts. Please try again later or reset your password.";
+          break;
+        case "auth/invalid-email":
+          errorMessage = "Invalid email format";
+          break;
+        default:
+          errorMessage = `Login failed: ${err.message}`;
+      }
+      setError(errorMessage);
       console.error("Login error:", err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -53,6 +135,13 @@ const LoginPage = () => {
     
     if (!resetEmail) {
       setResetMessage("Please enter your email address");
+      return;
+    }
+
+    // Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(resetEmail)) {
+      setResetMessage("Please enter a valid email address");
       return;
     }
 
@@ -68,6 +157,9 @@ const LoginPage = () => {
 
   return (
     <div className="bg-gray-100 min-h-screen font-sans">
+      {/* reCAPTCHA container (invisible) */}
+      <div id="recaptcha-container"></div>
+      
       {/* Navbar */}
       <nav className="bg-pink-500 p-5 flex justify-between items-center text-white shadow-lg">
         <h1 className="text-4xl font-extrabold">Wash It Izzy</h1>
@@ -109,6 +201,7 @@ const LoginPage = () => {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="username"
                 />
               </div>
               <div>
@@ -120,9 +213,19 @@ const LoginPage = () => {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
+                  minLength="8"
                 />
               </div>
-              <div className="flex justify-end text-sm">
+              <div className="flex justify-between text-sm">
+                <div className="flex items-center">
+                  <input 
+                    type="checkbox" 
+                    id="rememberMe" 
+                    className="mr-2"
+                  />
+                  <label htmlFor="rememberMe">Remember me</label>
+                </div>
                 <button 
                   type="button" 
                   className="text-gray-500 hover:underline"
@@ -131,14 +234,34 @@ const LoginPage = () => {
                   Forgot password?
                 </button>
               </div>
-              {error && <p className="text-red-500 text-sm">{error}</p>}
+              
+              {error && (
+                <div className="p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+                  {error}
+                  {failedAttempts >= 3 && (
+                    <p className="mt-1 text-sm">For security, please complete the verification.</p>
+                  )}
+                </div>
+              )}
+              
               <div>
                 <button
                   type="submit"
-                  className="w-full bg-gradient-to-r from-pink-500 to-pink-300 text-black p-3 rounded-full hover:opacity-90 transition-all"
+                  className={`w-full bg-gradient-to-r from-pink-500 to-pink-300 text-black p-3 rounded-full hover:opacity-90 transition-all ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
+                  disabled={isLoading}
                 >
-                  Login
+                  {isLoading ? 'Logging in...' : 'Login'}
                 </button>
+              </div>
+              
+              {/* Security tips */}
+              <div className="text-xs text-gray-500 mt-4">
+                <p className="font-semibold">Security Tips:</p>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>Never share your password with anyone</li>
+                  <li>Use a strong, unique password</li>
+                  <li>Log out after each session</li>
+                </ul>
               </div>
             </form>
           ) : (
@@ -157,10 +280,11 @@ const LoginPage = () => {
                     required
                     value={resetEmail}
                     onChange={(e) => setResetEmail(e.target.value)}
+                    autoComplete="email"
                   />
                 </div>
                 {resetMessage && (
-                  <p className={`text-sm mt-2 ${resetMessage.includes("Error") ? "text-red-500" : "text-green-500"}`}>
+                  <p className={`text-sm mt-2 p-2 rounded-lg ${resetMessage.includes("Error") ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"}`}>
                     {resetMessage}
                   </p>
                 )}
@@ -187,61 +311,56 @@ const LoginPage = () => {
 
       {/* Footer */}
       <footer id="contact" className="bg-pink-400 text-white py-12">
-  {/* Main Footer Content - now with vertical centering */}
-  <div className="max-w-6xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left items-center">
-    {/* Socials */}
-    <div className="py-4">
-      <h3 className="text-xl font-bold mb-4">Socials</h3>
-      <div className="flex justify-center md:justify-start space-x-6">
-        <a 
-          href="https://www.facebook.com/washitizzy" 
-          target="_blank" 
-          rel="noopener noreferrer" 
-          className="text-white hover:text-pink-200 transition-colors"
-        >
-          <FontAwesomeIcon icon={faFacebook} size="2x" />
-        </a>
-        <a 
-          href="https://www.instagram.com" 
-          target="_blank" 
-          rel="noopener noreferrer" 
-          className="text-white hover:text-pink-200 transition-colors"
-        >
-          <FontAwesomeIcon icon={faInstagram} size="2x" />
-        </a>
-      </div>
-    </div>
+        <div className="max-w-6xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left items-center">
+          <div className="py-4">
+            <h3 className="text-xl font-bold mb-4">Socials</h3>
+            <div className="flex justify-center md:justify-start space-x-6">
+              <a 
+                href="https://www.facebook.com/washitizzy" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="text-white hover:text-pink-200 transition-colors"
+              >
+                <FontAwesomeIcon icon={faFacebook} size="2x" />
+              </a>
+              <a 
+                href="https://www.instagram.com" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="text-white hover:text-pink-200 transition-colors"
+              >
+                <FontAwesomeIcon icon={faInstagram} size="2x" />
+              </a>
+            </div>
+          </div>
 
-    {/* Quick Links */}
-    <div className="py-4">
-      <h4 className="text-lg font-semibold mb-4">Quick Links</h4>
-      <ul className="space-y-2">
-        <li>
-          <a href="#service" className="text-white hover:text-pink-200 transition-colors">
-            Services
-          </a>
-        </li>
-        <li>
-          <a href="#contact" className="text-white hover:text-pink-200 transition-colors">
-            Contact
-          </a>
-        </li>
-      </ul>
-    </div>
+          <div className="py-4">
+            <h4 className="text-lg font-semibold mb-4">Quick Links</h4>
+            <ul className="space-y-2">
+              <li>
+                <a href="#service" className="text-white hover:text-pink-200 transition-colors">
+                  Services
+                </a>
+              </li>
+              <li>
+                <a href="#contact" className="text-white hover:text-pink-200 transition-colors">
+                  Contact
+                </a>
+              </li>
+            </ul>
+          </div>
 
-    {/* Contact Info */}
-    <div className="py-4">
-      <h4 className="text-lg font-semibold mb-4">Get in Touch</h4>
-      <p className="text-white">Email: washitizzy@email.com</p>
-      <p className="text-white">Phone: 123456789</p>
-    </div>
-  </div>
+          <div className="py-4">
+            <h4 className="text-lg font-semibold mb-4">Get in Touch</h4>
+            <p className="text-white">Email: washitizzy@email.com</p>
+            <p className="text-white">Phone: 123456789</p>
+          </div>
+        </div>
 
-  {/* Copyright - moved down slightly */}
-  <div className="text-center text-white text-sm mt-12 pb-4">
-    &copy; {new Date().getFullYear()} Wash It Izzy - All Rights Reserved.
-  </div>
-</footer>
+        <div className="text-center text-white text-sm mt-12 pb-4">
+          &copy; {new Date().getFullYear()} Wash It Izzy - All Rights Reserved.
+        </div>
+      </footer>
     </div>
   );
 };
